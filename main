@@ -1,0 +1,91 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<title>ポ調</title>
+<style>
+body{font-family:sans-serif;max-width:900px;margin:40px auto;padding:0 20px;line-height:1.6}
+.box{background:#f7f7f7;border:1px solid #ddd;border-radius:8px;padding:12px;margin:18px 0}
+table{border-collapse:collapse;width:100%;margin-top:12px}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
+th{background:#f2f2f2}.small{max-width:340px}.note{font-size:.9em;color:#777}
+</style></head><body>
+<h2>ポイント調整計算ツール（独りんぼエンヴィー）</h2>
+<div class="box"><b>使い方</b><br>
+ほしいポイント数を入力すると、ライボ消費数、必要なイベントボーナス、スコアが計算されます。<br>
+
+
+WLのモードでは、イベントボーナス範囲内であればどの値でも同じポイントになります。<br>
+
+
+<div class="box">
+<b>イベント種類</b><br>
+<label><input type="radio" name="mode" value="normal" checked> 通常</label>
+<label style="margin-left:16px;"><input type="radio" name="mode" value="wl"> WL</label><br><br>
+<b>ほしいポイント数</b> <input id="z" type="number" onkeydown="if(event.key==='Enter') calc()"><button onclick="calc()">計算</button>
+</div>
+<p id="count"></p>
+<table><thead><tr><th>No.</th><th>ライボ消費数</th><th>イベントボーナス</th><th>スコア</th></tr></thead><tbody id="tbody"></tbody></table>
+<script>
+const divisors=[5,10,15,20,25,27,29,31,33,35];
+const ceil1=v=>Math.ceil(v*10-1e-9)/10;
+const floor1=v=>Math.floor(v*10+1e-9)/10;
+
+function addRows(point,life,mode,out){
+  for(let y=0;y<=199;y++){
+    let a=100*point/(y+100)-100;
+    let b=100*(point+1)/(y+100)-100;
+    let s,e,disp;
+    if(mode==="normal"){
+      s=Math.max(0,Math.ceil(a-1e-9));
+      e=Math.min(435,Math.floor(b-1e-12));
+      if(s>e) continue;
+      disp=(s===e)?`${s}`:`${s}～${e}`;
+    }else{
+      s=Math.max(0,ceil1(a));
+      e=Math.min(990,floor1(b-1e-12));
+      if(s>e) continue;
+      disp=`${s.toFixed(1)}～${e.toFixed(1)}`;
+    }
+    out.push([life,disp,(y*20000).toLocaleString()+"～"+(((y+1)*20000)-1).toLocaleString()]);
+  }
+}
+
+function calc(){
+  const P=parseInt(document.getElementById('z').value);
+  if(isNaN(P)) return;
+    const mode=document.querySelector('input[name="mode"]:checked').value;
+
+  const candidates=[];
+  addRows(P,0,mode,candidates);
+  for(let i=0;i<divisors.length;i++){
+    const d=divisors[i];
+    if(P%d!==0) continue;
+    const tmp=[];
+    addRows(P/d,i+1,mode,tmp);
+    if(tmp.length) candidates.push(...tmp);
+  }
+
+  const lifes=[...new Set(candidates.map(r=>r[0]))].sort((a,b)=>a-b);
+  let use=[];
+  if(lifes.length){
+    const minLife=lifes[0];
+    const maxLife=lifes[lifes.length-1];
+    use.push(...candidates.filter(r=>r[0]===maxLife));
+    if(minLife!==maxLife){
+      use.push(...candidates.filter(r=>r[0]===minLife));
+    }
+  }
+
+  let t='';
+  use.forEach((r,i)=>{
+    t+=`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`;
+  });
+
+if(use.length===0){
+  document.getElementById('tbody').innerHTML =
+    '<tr><td colspan="4">該当なし</td></tr>';
+  document.getElementById('count').textContent='条件を満たす組：0件';
+  return;
+}
+  document.getElementById('tbody').innerHTML=t;
+  document.getElementById('count').textContent=`条件を満たす組：${use.length}件`;
+}
+</script></body></html>
