@@ -28,7 +28,7 @@ const divisors = [5, 10, 15, 20, 25, 27, 29, 31, 33, 35];
 // 順算（ゲーム内計算式の再現）による検算用関数
 function calculateActualPoint(score, bonus, lifeIndex) {
   const y = Math.floor(score / 20000);
-  // ② (y + 100) * (bonus + 100) / 100 の小数第1位切り捨て（整数化）
+  // (y + 100) * (bonus + 100) / 100 の小数第1位切り捨て（整数化）
   const baseP = Math.floor((100 + y) * (100 + bonus) / 100);
   
   if (lifeIndex === 0) return baseP;
@@ -51,18 +51,18 @@ function calc() {
 
     // スコア区分 y (0 ～ 199)
     for (let y = 0; y <= 199; y++) {
-      // 基礎P = floor((100 + y) * (100 + bonus) / 100) = targetBaseP となるボーナス範囲
-      // targetBaseP <= (100 + y) * (100 + bonus) / 100 < targetBaseP + 1
-      let minB = (targetBaseP * 100 / (100 + y)) - 100;
-      let maxB = ((targetBaseP + 1) * 100 / (100 + y)) - 100 - 1e-9;
+      let rawMinB = (targetBaseP * 100 / (100 + y)) - 100;
+      let rawMaxB = ((targetBaseP + 1) * 100 / (100 + y)) - 100;
+
+      let minB, maxB;
+      const testScore = y * 20000;
 
       if (mode === "normal") {
-        minB = Math.max(0, Math.ceil(minB - 1e-9));
-        maxB = Math.min(435, Math.floor(maxB + 1e-9));
+        minB = Math.max(0, Math.ceil(rawMinB - 1e-9));
+        maxB = Math.min(435, Math.floor(rawMaxB - 1e-9));
         if (minB > maxB) continue;
 
         // 【検算】最小・最大値で実際に目標Pになるかテスト
-        const testScore = y * 20000;
         if (calculateActualPoint(testScore, minB, lifeIdx) === P &&
             calculateActualPoint(testScore, maxB, lifeIdx) === P) {
           
@@ -70,26 +70,26 @@ function calc() {
           validResults.push({
             life: lifeIdx,
             bonus: disp,
-            score: `${(y * 20000).toLocaleString()} ～ ${(((y + 1) * 20000) - 1).toLocaleString()}`
+            score: `${testScore.toLocaleString()} ～ ${(((y + 1) * 20000) - 1).toLocaleString()}`
           });
         }
-} else { // WLモード (0.1%刻み)
-  minB = Math.max(0, Math.ceil((minB - 1e-9) * 10) / 10);
-  maxB = Math.min(990, Math.floor((maxB + 1e-9) * 10) / 10);
-  if (minB > maxB) continue;
+      } else { // WLモード (0.1%刻み)
+        minB = Math.max(0, Math.ceil((rawMinB - 1e-9) * 10) / 10);
+        maxB = Math.min(990, Math.floor((rawMaxB - 1e-9) * 10) / 10);
+        if (minB > maxB) continue;
 
-  // 【検算】WLモードの最小値・最大値の両方で目標Pになるかテスト
-  const testScore = y * 20000;
-  if (calculateActualPoint(testScore, minB, lifeIdx) === P &&
-      calculateActualPoint(testScore, maxB, lifeIdx) === P) {
-    
-    validResults.push({
-      life: lifeIdx,
-      bonus: `${minB.toFixed(1)}% ～ ${maxB.toFixed(1)}%`,
-      score: `${(y * 20000).toLocaleString()} ～ ${(((y + 1) * 20000) - 1).toLocaleString()}`
-    });
-  }
-}
+        // 【検算】最小・最大値の両方で目標Pになるかテスト
+        if (calculateActualPoint(testScore, minB, lifeIdx) === P &&
+            calculateActualPoint(testScore, maxB, lifeIdx) === P) {
+          
+          const disp = (minB === maxB) ? `${minB.toFixed(1)}%` : `${minB.toFixed(1)}% ～ ${maxB.toFixed(1)}%`;
+          validResults.push({
+            life: lifeIdx,
+            bonus: disp,
+            score: `${testScore.toLocaleString()} ～ ${(((y + 1) * 20000) - 1).toLocaleString()}`
+          });
+        }
+      }
     }
   }
 
