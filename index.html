@@ -23,68 +23,82 @@ WLイベントの場合、編成のイベントボーナスの詳細から、合
 <p id="count"></p>
 <table><thead><tr><th>No.</th><th>ライボ消費数</th><th>イベントボーナス</th><th>スコア</th></tr></thead><tbody id="tbody"></tbody></table>
 <script>
-const divisors=[5,10,15,20,25,27,29,31,33,35];
-const ceil1=v=>Math.ceil(v*10-1e-9)/10;
-const floor1=v=>Math.floor(v*10+1e-9)/10;
+const divisors = [5, 10, 15, 20, 25, 27, 29, 31, 33, 35];
 
-function addRows(point,life,mode,out){
-  for(let y=0;y<=199;y++){
-    let a=100*point/(y+100)-100;
-    let b=100*(point+1)/(y+100)-100;
-    let s,e,disp;
-    if(mode==="normal"){
-      s=Math.max(0,Math.ceil(a-1e-9));
-      e=Math.min(435,Math.floor(b-1e-12));
-      if(s>e) continue;
-      disp=(s===e)?`${s}`:`${s}～${e}`;
-    }else{
-      s=Math.max(0,ceil1(a));
-      e=Math.min(990,floor1(b-1e-12));
-      if(s>e) continue;
-      disp=`${s.toFixed(1)}～${e.toFixed(1)}`;
+// 小数点第1位の丸め関数
+const ceil1 = v => Math.ceil((v - 1e-9) * 10) / 10;
+const floor1 = v => Math.floor((v + 1e-9) * 10) / 10;
+
+function addRows(point, life, mode, out) {
+  for (let y = 0; y <= 199; y++) {
+    // 基礎ポイント判定
+    let a = 100 * point / (y + 100) - 100;
+    let b = 100 * (point + 1) / (y + 100) - 100;
+
+    let s, e, disp;
+    if (mode === "normal") {
+      s = Math.max(0, Math.ceil(a - 1e-9));
+      e = Math.min(435, Math.floor(b - 1e-9));
+      if (s > e) continue;
+      disp = (s === e) ? `${s}%` : `${s}% ～ ${e}%`;
+    } else {
+      s = Math.max(0, ceil1(a));
+      e = Math.min(990, floor1(b - 1e-9));
+      if (s > e) continue;
+      disp = `${s.toFixed(1)}% ～ ${e.toFixed(1)}%`;
     }
-    out.push([life,disp,(y*20000).toLocaleString()+"～"+(((y+1)*20000)-1).toLocaleString()]);
+
+    const scoreMin = (y * 20000).toLocaleString();
+    const scoreMax = (((y + 1) * 20000) - 1).toLocaleString();
+    
+    out.push({
+      life: life,
+      bonus: disp,
+      score: `${scoreMin} ～ ${scoreMax}`
+    });
   }
 }
 
-function calc(){
-  const P=parseInt(document.getElementById('z').value);
-  if(isNaN(P)) return;
-    const mode=document.querySelector('input[name="mode"]:checked').value;
+function calc() {
+  const P = parseInt(document.getElementById('z').value, 10);
+  if (isNaN(P) || P <= 0) return;
 
-  const candidates=[];
-  addRows(P,0,mode,candidates);
-  for(let i=0;i<divisors.length;i++){
-    const d=divisors[i];
-    if(P%d!==0) continue;
-    const tmp=[];
-    addRows(P/d,i+1,mode,tmp);
-    if(tmp.length) candidates.push(...tmp);
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const candidates = [];
+
+  // 炊きなし (ライボ0)
+  addRows(P, 0, mode, candidates);
+
+  // ライボ1以上
+  for (let i = 0; i < divisors.length; i++) {
+    const d = divisors[i];
+    if (P % d !== 0) continue;
+    addRows(P / d, i + 1, mode, candidates);
   }
 
-  const lifes=[...new Set(candidates.map(r=>r[0]))].sort((a,b)=>a-b);
-  let use=[];
-  if(lifes.length){
-    const minLife=lifes[0];
-    const maxLife=lifes[lifes.length-1];
-    use.push(...candidates.filter(r=>r[0]===maxLife));
-    if(minLife!==maxLife){
-      use.push(...candidates.filter(r=>r[0]===minLife));
-    }
+  // 結果の表示処理
+  if (candidates.length === 0) {
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="4">該当なし</td></tr>';
+    document.getElementById('count').textContent = '条件を満たす組：0件';
+    return;
   }
 
-  let t='';
-  use.forEach((r,i)=>{
-    t+=`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`;
+  // ライボ消費数が最大のものと最小のものを抽出
+  const lifes = [...new Set(candidates.map(r => r.life))].sort((a, b) => a - b);
+  const minLife = lifes[0];
+  const maxLife = lifes[lifes.length - 1];
+
+  let use = candidates.filter(r => r.life === maxLife);
+  if (minLife !== maxLife) {
+    use = use.concat(candidates.filter(r => r.life === minLife));
+  }
+
+  let t = '';
+  use.forEach((r, i) => {
+    t += `<tr><td>${i + 1}</td><td>${r.life}</td><td>${r.bonus}</td><td>${r.score}</td></tr>`;
   });
 
-if(use.length===0){
-  document.getElementById('tbody').innerHTML =
-    '<tr><td colspan="4">該当なし</td></tr>';
-  document.getElementById('count').textContent='条件を満たす組：0件';
-  return;
-}
-  document.getElementById('tbody').innerHTML=t;
-  document.getElementById('count').textContent=`条件を満たす組：${use.length}件`;
+  document.getElementById('tbody').innerHTML = t;
+  document.getElementById('count').textContent = `条件を満たす組：${use.length}件`;
 }
 </script></body></html>
